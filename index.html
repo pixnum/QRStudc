@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QRStudc - QR Code Generator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #121212;
+      color: #f0f0f0;
+    }
+    .app-frame {
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 12px;
+      border: 2px solid #444;
+      text-align: center;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    h2 { margin-bottom: 15px; }
+    label { margin-right: 10px; }
+    select, input[type="text"], textarea {
+      flex: 1;
+      padding: 8px;
+      border-radius: 6px;
+      border: none;
+      box-sizing: border-box;
+    }
+    textarea { resize: vertical; }
+    button {
+      background: #4caf50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px 5px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover { background: #45a049; }
+    .clear-btn {
+      background: #e53935;
+    }
+    .clear-btn:hover { background: #c62828; }
+    #qrWrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 20px auto;
+    }
+    #qrcode { display: inline-block; }
+    .footer { margin-top: 20px; font-size: 12px; color: #aaa; }
+
+    /* Flex rows for inputs and sliders */
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .row input[type="range"] {
+      flex: 1;
+      margin: 0 10px;
+    }
+    .row textarea {
+      width: calc(100% - 10px);
+    }
+    .row select {
+      width: calc(100% - 10px);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-frame">
+    <h2>QRStudc</h2>
+
+    <div class="row">
+      <label for="dataType">Data Type:</label>
+      <select id="dataType">
+        <option value="text">Text</option>
+        <option value="url">URL</option>
+        <option value="email">Email</option>
+        <option value="phone">Phone</option>
+        <option value="sms">SMS</option>
+        <option value="wifi">Wi-Fi</option>
+        <option value="vcard">vCard</option>
+        <option value="geo">Geo Location</option>
+        <option value="event">Calendar Event</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label for="qrData">Enter Data:</label>
+      <textarea id="qrData" rows="3" placeholder="Enter your data here"></textarea>
+    </div>
+
+    <div class="row">
+      <label for="qrSize">Size (px):</label>
+      <input type="range" id="qrSize" min="100" max="600" value="300">
+      <span id="sizeValue">300</span>
+    </div>
+
+    <div class="row">
+      <label for="errorCorrection">Error Correction:</label>
+      <select id="errorCorrection">
+        <option value="L">Low</option>
+        <option value="M" selected>Medium</option>
+        <option value="Q">Quartile</option>
+        <option value="H">High</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label for="qrMargin">Margin:</label>
+      <input type="range" id="qrMargin" min="0" max="20" value="4">
+      <span id="marginValue">4</span>
+    </div>
+
+    <div>
+      <button onclick="generateQR()">Generate</button>
+      <button class="clear-btn" onclick="clearQR()">Clear</button>
+    </div>
+
+    <div id="qrWrapper">
+      <div id="qrcode"></div>
+    </div>
+
+    <button onclick="downloadQR('png')">Download PNG</button>
+    <button onclick="downloadQR('jpeg')">Download JPEG</button>
+
+    <div class="footer">© QRStudc 2025</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/easyqrcodejs@4.4.13/dist/easy.qrcode.min.js"></script>
+  <script>
+    let qr;
+
+    function formatData(type, data) {
+      switch(type) {
+        case "url": return /^https?:\/\//.test(data) ? data : "https://" + data;
+        case "email": return "mailto:" + data;
+        case "phone": return "tel:" + data;
+        case "sms": return "sms:" + data;
+        case "wifi": return `WIFI:T:WPA;S:${data};;`;
+        case "geo": return "geo:" + data;
+        case "event": return "BEGIN:VEVENT\nSUMMARY:" + data + "\nEND:VEVENT";
+        case "vcard": return "BEGIN:VCARD\n" + data + "\nEND:VCARD";
+        default: return data;
+      }
+    }
+
+    function generateQR() {
+      const type = document.getElementById("dataType").value;
+      const data = document.getElementById("qrData").value.trim() || "Hello, QR!";
+      const size = parseInt(document.getElementById("qrSize").value) || 300;
+      const errorCorrection = document.getElementById("errorCorrection").value;
+      const margin = parseInt(document.getElementById("qrMargin").value);
+
+      const finalData = formatData(type, data);
+      document.getElementById("qrcode").innerHTML = "";
+
+      qr = new QRCode(document.getElementById("qrcode"), {
+        text: finalData,
+        width: size,
+        height: size,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel[errorCorrection],
+        quietZone: margin
+      });
+    }
+
+    function downloadQR(format) {
+      const canvas = document.querySelector("#qrcode canvas");
+      if (!canvas) return alert("Please generate a QR code first.");
+      let link = document.createElement("a");
+      link.href = canvas.toDataURL("image/" + format);
+      link.download = "qrcode." + format;
+      link.click();
+    }
+
+    function clearQR() {
+      document.getElementById("qrcode").innerHTML = "";
+      document.getElementById("qrData").value = "";
+      document.getElementById("qrSize").value = 300;
+      document.getElementById("sizeValue").textContent = 300;
+      document.getElementById("qrMargin").value = 4;
+      document.getElementById("marginValue").textContent = 4;
+      document.getElementById("dataType").value = "text";
+      document.getElementById("errorCorrection").value = "M";
+    }
+
+    // Live slider updates without constant regeneration
+    document.getElementById("qrSize").addEventListener("input", function(e) {
+      document.getElementById("sizeValue").textContent = e.target.value;
+    });
+    document.getElementById("qrMargin").addEventListener("input", function(e) {
+      document.getElementById("marginValue").textContent = e.target.value;
+    });
+
+    // Regenerate QR after slider change
+    document.getElementById("qrSize").addEventListener("change", generateQR);
+    document.getElementById("qrMargin").addEventListener("change", generateQR);
+    document.getElementById("qrData").addEventListener("change", generateQR);
+    document.getElementById("dataType").addEventListener("change", generateQR);
+    document.getElementById("errorCorrection").addEventListener("change", generateQR);
+
+    // Generate default QR on load
+    generateQR();
+  </script>
+</body>
+</html>
